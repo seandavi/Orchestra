@@ -1,0 +1,8 @@
+additionalArguments:
+- "--accesslog"
+- "--api.insecure=true"
+- "--providers.kubernetesingress=true"
+- "--api=true"
+- "--api.dashboard=true"
+- "--accesslog.filters.statuscodes=200,300-302,400-405"
+
