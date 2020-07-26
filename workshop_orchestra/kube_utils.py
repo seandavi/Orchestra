@@ -1,24 +1,43 @@
 from kubernetes import client, config
+import os
 
 namespace = 'default'
+if os.getenv('KUBERNETES_SERVICE_HOST'):
+    config.load_incluster_config()
+else:
+    config.load_kube_config()
+
 
 def list_deployments():
-    config.load_kube_config()
     api_instance = client.AppsV1Api()
     return api_instance.list_namespaced_deployment(namespace, pretty=True)
 
 
 def list_ingresses():
-    config.load_kube_config()
     api_instance = client.ExtensionsV1beta1Api()
     return api_instance.list_namespaced_ingress(namespace, pretty=True)
 
 
 def list_services():
-    config.load_kube_config()
     api_instance = client.CoreV1Api()
     return api_instance.list_namespaced_service(namespace, pretty=True)
 
+def delete_service(name):
+    api_instance = client.CoreV1Api()
+    return api_instance.delete_namespaced_service(name, namespace, pretty=True)
+
+def delete_ingress(name):
+    api_instance = client.ExtensionsV1beta1Api()
+    return api_instance.delete_namespaced_ingress(name, namespace, pretty=True)
+
+def delete_deployment(name):
+    api_instance = client.AppsV1Api()
+    return api_instance.delete_namespaced_deployment(name, namespace, pretty=True)
+
+def delete_workshop(name):
+    delete_ingress(name)
+    delete_service(name)
+    delete_deployment(name)
 
 def create_ingress(api_instance, name):
     ingress = {
@@ -58,7 +77,7 @@ def create_ingress(api_instance, name):
         print("Exception when calling CoreV1Api->create_namespaced_endpoints: %s\n" % e)
 
 
-def create_deployment(api_instance, name, container):
+def create_deployment(api_instance, name, container, email):
     deployment = {
         "apiVersion": "apps/v1",
         "kind": "Deployment",
@@ -155,11 +174,10 @@ def create_service(api_instance, name):
     except Exception as e:
         print("Exception when calling CoreV1Api->create_namespaced_endpoints: %s\n" % e)
 
-def create_instance(name, container):
-    config.load_kube_config()
+def create_instance(name, container, email):
     api_instance = client.AppsV1Api()
     namespace = 'default'
-    create_deployment(api_instance,name,container)
+    create_deployment(api_instance,name,container, email)
     api_instance = client.CoreV1Api()
     create_service(api_instance,name)
     api_instance = client.ExtensionsV1beta1Api()
