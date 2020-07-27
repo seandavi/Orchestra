@@ -10,14 +10,62 @@
   <section class="section">
     <div class="container">
       <div class="columns is-mobile is-centered">
-        <div class="column is-half">
-          <h1>Your Workshop is awaiting.</h1>
-          <h2>Username: rstudio</h2>
-          <h2>Password: welcome-to-bioc2020</h2>
-          <a href="{{ url }}">{{ url }}</a>
+        <div class="column is-half is-centered">
+          <div class="title">Preparing your workshop.</div>
+          <p>You will see a progress bar and a disabled "Launch Workshop" button below untill your workshop has successfully been deployed to our cluster. Once available, the progress bar will disappear and the button will become active. Click the button and you will be redirected to the RStudio login screen. Use these credentials to login:
+            <ul>
+              <li>Username: rstudio</li>
+              <li>Password: welcome-to-bioc2020</li>
+            </ul>
+          <p>Your personalized, self-expiring URL is: <br/>{{ url }}</p>
+          <p>The button below will become active when your workshop is ready to run</p>
+
+          <div id="app">
+            <a class="button" v-bind:disabled="!active" href="{{ url }}">Launch Workshop</a>
+            <div id="progress" v-if="!active">
+              <progress class="progress is-large is-info" max="100">30%</progress>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </section>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.5.3/vue.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.19.2/axios.min.js" crossorigin="anonymous"></script>
+  <script>
+    
+var app = new Vue({
+    el: '#app',
+    data () {
+        return {
+            active: false,
+            interval: null
+        }
+    },
+    methods: {
+        checkReady () {
+            this.interval = setInterval(() => {
+                axios.get("/ready?name={{ name }}").then(response => this.active = response.data.is_ready)
+            },2000)
+        }
+    },
+    beforeDestroy () {
+	      clearInterval(this.interval)
+    },
+    mounted() {
+        this.checkReady()
+    }
+})
+</script>
+
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-122837239-1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-122837239-1');
+</script>
   </body>
 </html>

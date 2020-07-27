@@ -15,9 +15,18 @@ spec:
       containers:
       - name: workshop-orchestra
         image: seandavi/workshop-orchestra
+        resources:
+          requests:
+            memory: "1024Mi"
+            cpu: "500m"
         env:
           - name: API_KEY
             value: bioc2020
+          - name: SQLALCHEMY_URI
+            valueFrom:
+              secretKeyRef:
+                name: workshop-secrets
+                key: SQLALCHEMY_URI
         ports:
          - containerPort: 80
       serviceAccountName: workshop-orchestra-sa

@@ -8,6 +8,12 @@ else:
     config.load_kube_config()
 
 
+def deployment_is_ready(name):
+    api_instance = client.AppsV1Api()
+    ready_replicas = api_instance.read_namespaced_deployment(name,'default').status.ready_replicas
+    return ready_replicas is not None
+
+
 def list_deployments():
     api_instance = client.AppsV1Api()
     return api_instance.list_namespaced_deployment(namespace, pretty=True)

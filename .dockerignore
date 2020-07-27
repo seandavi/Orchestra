@@ -1,0 +1,4 @@
+.venv
+.env
+kubernetes_deploy
+traefik
