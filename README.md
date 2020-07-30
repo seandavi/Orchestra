@@ -66,3 +66,35 @@ Get the PushGateway URL by running these commands in the same shell:
 For more information on running Prometheus, visit:
 https://prometheus.io/
 ```
+
+### Grafana
+
+``` shell
+helm search repo graphana
+helm inspect values stable/grafana > grafana/values.yaml
+```
+
+``` shell
+kubectl create secret generic orchestra-password \
+    --from-literal='orchestra-password=<MYPASSWORD>'
+```
+
+## Google Kubernetes Cluster
+
+### Resizing a cluster
+
+To [resize a cluster's node pools](https://cloud.google.com/kubernetes-engine/docs/how-to/resizing-a-cluster), run the following command:
+
+``` shell
+gcloud container clusters resize cluster-name --node-pool pool-name \
+    --num-nodes num-nodes
+```
+
+Replace the following:
+
+- cluster-name: the name of the cluster to resize.
+- pool-name: the name of the node pool to resize.
+- num-nodes: the number of nodes in the pool in a zonal cluster. If you use multi-zonal or regional clusters, num-nodes is the number of nodes for each zone the node pools is in.
+Repeat this command for each node pool. If your cluster has only one node pool, omit the --node-pool flag.
+
+For more information, refer to the [gcloud container clusters](https://cloud.google.com/sdk/gcloud/reference/container/clusters/resize) resize documentation.
