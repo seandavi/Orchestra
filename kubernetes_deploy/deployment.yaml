@@ -11,6 +11,10 @@ spec:
     metadata:
       labels:
         app: workshop-orchestra
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "80"
     spec:
       containers:
       - name: workshop-orchestra

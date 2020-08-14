@@ -14,12 +14,12 @@ from workshop_orchestra import db
 from fastapi import FastAPI, Depends, Request
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
+from starlette_prometheus import metrics, PrometheusMiddleware
+
 from starlette.responses import RedirectResponse
 from pydantic import BaseModel
 
-from .kube_utils import (list_deployments as ld, list_services as ls,
-                         list_ingresses as li, create_instance,
-                         deployment_is_ready)
+from . import kube_utils
 from .security import check_authentication_header
 from .description import api_description
 from .config import config
@@ -27,7 +27,8 @@ from .config import config
 app = FastAPI(title="Workshop Orchestration API",
               description = api_description)
 app.add_middleware(SessionMiddleware, secret_key=config('API_KEY'))
-
+app.add_middleware(PrometheusMiddleware)
+app.add_route("/metrics/", metrics)
 
 
 logging.basicConfig(level=logging.INFO)
@@ -57,13 +58,17 @@ async def read_root(request: Request):
 async def create_new_instance_web(request: Request, container: str, email: str):
     repo = re.sub('[:#].*','',container).split('/')[1]
 
+    res = await db.get_existing_workshop(email, container)
+
+    if(len(res)>0):
+        try:
+            stuff = deployment_is_ready(res[0].get('name'))
+            if(stuff):
+                return RedirectResponse('http://'+res[0].get('name')+".bioc.cancerdatasci.org")
+        except:
+            logging.info(f"{container} instance {res[0].get('name')} for email {email} not found, so creating a new one")
     res = await _new_instance(container, repo, email)
     #await asyncio.sleep(2)
-    stuff = deployment_is_ready(res['name'])
-    logging.info(res)
-    logging.info(stuff)
-    if(stuff):
-        return RedirectResponse(res['url'])
     return templates.TemplateResponse('new_instance.html',
                                       {
                                           "request": request,
@@ -73,10 +78,21 @@ async def create_new_instance_web(request: Request, container: str, email: str):
 
 @app.get("/ready")
 async def instance_is_ready(name: str):
-    res = deployment_is_ready(name)
+    res = kube_utils.deployment_is_ready(name)
     return {'is_ready': res}
 
+@app.get("/instance/{name}")
+async def get_instance(name: str):
+    return await kube_utils.get_deployment(name)
 
+@app.delete("/instance/{name}")
+async def delete_instance(name: str):
+    try:
+        await kube_utils.delete_workshop(name)
+    except Exception as e:
+        print(e)
+        return None
+    return {"name": name, "status": "DELETED"}
 
 async def _new_instance(container: str, repo: str, email: Optional[str] = None,
                  ref: Optional[str] = None,
@@ -90,28 +106,7 @@ async def _new_instance(container: str, repo: str, email: Optional[str] = None,
     logging.info(d)
     s = random_string()
     inst_name = f"{repo}-{s}"
-    create_instance(inst_name, container, email)
+    kube_utils.create_instance(inst_name, container, email)
     d.update({"name": inst_name, "url": f"http://{inst_name}.bioc.cancerdatasci.org/"})
     await db.add_instance(name=inst_name, email=email, container=container)
     return d
-
-@app.get("/instances/{org}/{repo}")
-def new_instance(org: str, repo: str, email: str):
-    return _new_instance(org, repo, email)
-
-
-@app.get("/deployments")
-def list_deployments(stuff: bool = Depends(check_authentication_header)):
-    return ld()
-
-@app.get("/ingresses")
-def list_ingresses(stuff: bool = Depends(check_authentication_header)):
-    return li()
-
-@app.get("/services")
-def list_services(stuff: bool = Depends(check_authentication_header)):
-    return ls()
-
-@app.put("/items/{item_id}")
-def update_item(item_id: int, item: Item):
-    return {"item_name": item.name, "item_id": item_id}

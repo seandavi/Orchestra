@@ -5,4 +5,3 @@ additionalArguments:
 - "--api=true"
 - "--api.dashboard=true"
 - "--accesslog.filters.statuscodes=200,300-302,400-405"
-

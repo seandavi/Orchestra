@@ -1,11 +1,17 @@
 from kubernetes import client, config
 import os
+import workshop_orchestra.db as db
 
 namespace = 'default'
 if os.getenv('KUBERNETES_SERVICE_HOST'):
     config.load_incluster_config()
 else:
     config.load_kube_config()
+
+async def get_deployment(name):
+    api_instance = client.AppsV1Api()
+    res = api_instance.read_namespaced_deployment(name,'default')
+    return res
 
 
 def deployment_is_ready(name):
@@ -40,7 +46,8 @@ def delete_deployment(name):
     api_instance = client.AppsV1Api()
     return api_instance.delete_namespaced_deployment(name, namespace, pretty=True)
 
-def delete_workshop(name):
+async def delete_workshop(name):
+    await db.delete_instance(name)
     delete_ingress(name)
     delete_service(name)
     delete_deployment(name)
@@ -91,7 +98,8 @@ def create_deployment(api_instance, name, container, email):
             "name": f"{name}",
             "labels": {
                 "app": f"{name}",
-                "org": "bioc"
+                "org": "bioc",
+
             }
         },
         "spec": {
@@ -104,8 +112,9 @@ def create_deployment(api_instance, name, container, email):
             "template": {
                 "metadata": {
                     "labels": {
-                        "app": f"{name}"
-                    }
+                        "app": f"{name}",
+                        "base": "rstudio"
+                        }
                 },
                 "spec": {
                     "containers": [
@@ -125,12 +134,12 @@ def create_deployment(api_instance, name, container, email):
                             ],
                             "resources": {
                                 "requests": {
-                                    "memory": "5000Mi",
-                                    "cpu": "500m"
+                                    "memory": "3000Mi",
+                                    "cpu": "200m"
                                 },
                                 "limits": {
-                                    "memory": "5000Mi",
-                                    "cpu": "1800m"
+                                    "memory": "10000Mi",
+                                    "cpu": "2000m"
                                 }
                             }
                         }

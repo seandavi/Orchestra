@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "workshop_orchestrator"
+name = "workshop_orchestra"
 version = "0.1.0"
 description = "Kubernetes, API, and docker images for complete workshop orchestration"
 authors = ["Sean Davis <seandavi@gmail.com>"]
@@ -16,10 +16,14 @@ uvicorn = "^0.11.6"
 jinja2 = "^2.11.2"
 itsdangerous = "^1.1.0"
 asyncio = "^3.4.3"
+starlette_prometheus = "^0.7.0"
+kubernetes_asyncio = "^11.3.0"
 
 [tool.poetry.dev-dependencies]
 ipython = "^7.16.1"
 psycopg2 = "^2.8.5"
+diagrams = "^0.16.0"
+alembic = "^1.4.2"
 
 [build-system]
 requires = ["poetry>=0.12"]

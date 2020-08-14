@@ -1,4 +1,4 @@
-# workshop_orchestra
+# Orchestra
 
 workshop platform provider for running docker containers on kubernetes
 

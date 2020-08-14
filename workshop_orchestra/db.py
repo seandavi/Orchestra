@@ -1,18 +1,19 @@
-from .config import config
-from databases import Database
-import asyncio
 import datetime
-from datetime import timezone
 
 import sqlalchemy
 
+from databases import Database
+from sqlalchemy import func, desc, and_
+
+from .config import config
 
 metadata = sqlalchemy.MetaData()
 
 instance_events = sqlalchemy.Table(
     "instance_events",
     metadata,
-    sqlalchemy.Column("name", sqlalchemy.Text, primary_key=True),
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column("name", sqlalchemy.Text, index=True),
     sqlalchemy.Column("container", sqlalchemy.Text),
     sqlalchemy.Column("email", sqlalchemy.Text, index=True),
     sqlalchemy.Column("status", sqlalchemy.Text),
@@ -36,6 +37,20 @@ async def connect():
         return
     await database.connect()
 
+async def get_outdated_workshops(interval = '4 hours'):
+    query = f"""with s as (select name, status, timestamp, row_number() over (partition by name order by timestamp desc) as rk from instance_events) select s.*, current_timestamp-s.timestamp as age from s whe
+ re s.rk=1 and current_timestamp-s.timestamp > interval '{interval}' and status!='DELETED'"""
+    await db.connect()
+    res = await database.fetch_all(query)
+
+
+async def get_existing_workshop(email, container):
+    await connect()
+    i = instance_events
+    query = i.select().where(and_(i.c.email==email, i.c.container==container)).order_by(desc('timestamp'))
+    res = await database.fetch_all(query)
+    return res
+
 async def get_workshops(id=None):
     await connect()
     if(id is None):
@@ -51,6 +66,15 @@ async def add_instance(name, email, container):
         status = 'CREATED', timestamp=datetime.datetime.utcnow())
     res = await database.execute(query)
     return True
+
+async def delete_instance(name):
+    await connect()
+    query = instance_events.insert().values(
+        name=name, status="DELETED", timestamp=datetime.datetime.utcnow()
+    )
+    res = await database.execute(query)
+    return True
+
 
 if __name__ == '__main__':
     engine = sqlalchemy.create_engine(config('SQLALCHEMY_URI'))
