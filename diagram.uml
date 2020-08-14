@@ -1,0 +1,58 @@
+@startuml
+skinparam handwritten true
+skinparam dpi 300
+
+User -> Traefik: Request new workshop
+Traefik -> OrchestraApp: Request new workshop
+
+=== Workshop creation process ===
+
+OrchestraApp -> Kubernetes: Pod request
+Kubernetes -> OrchestraApp: Pod request in process
+OrchestraApp -> Kubernetes: Service request
+Kubernetes -> OrchestraApp: Service created
+OrchestraApp -> Kubernetes: Ingress request
+Kubernetes -> Traefik: Ingress request
+Traefik -> Kubernetes: Ingress created
+Kubernetes -> OrchestraApp: Ingress created
+
+OrchestraApp -> User: Waiting for Workshop to launch
+
+Kubernetes --> OrchestraApp : Pod created
+
+OrchestraApp -> Kubernetes: "Deployment Ready?"
+Kubernetes -> OrchestraApp: Deployment created
+
+OrchestraApp -> WorkshopRstudio ** : Ready for service
+OrchestraApp -> User: Workshop ready for launch
+
+=== Rstudio Login process ===
+
+User -> WorkshopRstudio: Connect to workshop instance
+WorkshopRstudio -> User: Request for Login
+User -> WorkshopRstudio: Login credentials
+
+=== Workshop participant working with data ===
+
+WorkshopRstudio <-> User: Rstudio session
+
+... Four hours of user time ...
+
+=== Workshop Shutdown ===
+
+OrchestraApp -> Kubernetes: Delete ingress
+Kubernetes -> Traefik: Delete ingress
+Traefik -> Kubernetes: Ingress deleted
+Kubernetes -> OrchestraApp: Ingress deleted
+OrchestraApp -> Kubernetes: Delete service
+Kubernetes -> OrchestraApp: Service deleted
+OrchestraApp -> Kubernetes: Delete pod
+Kubernetes -> WorkshopRstudio !! : Shutdown
+Kubernetes -> OrchestraApp: Pod deleted
+
+
+
+
+
+
+@enduml
