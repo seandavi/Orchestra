@@ -134,12 +134,12 @@ def create_deployment(api_instance, name, container, email):
                             ],
                             "resources": {
                                 "requests": {
-                                    "memory": "3000Mi",
-                                    "cpu": "200m"
+                                    "memory": "1000Mi",
+                                    "cpu": "100m"
                                 },
                                 "limits": {
                                     "memory": "10000Mi",
-                                    "cpu": "2000m"
+                                    "cpu": "1000m"
                                 }
                             }
                         }
