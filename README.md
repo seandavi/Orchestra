@@ -1,6 +1,25 @@
 # Orchestra
 
-workshop platform provider for running docker containers on kubernetes
+The Orchestra platform aims to facilitate data science education. The current iteration supports
+a flexible approach to making workshop or tutorial materials available to any user anywhere in the 
+world via an Rstudio, Jupyter Notebook, or any other web-based data science framework (including 
+LearnR shiny apps, for example).
+
+[Give it a try.](http://workshop.bioc.cancerdatasci.org/)
+
+## For users
+
+A simple **Choose a Workshop** page presents all available environments for workshops. Choose one, 
+enter your email, and within a minute or so, you get a dedicated compute environment with all
+necessary software installed and workshop materials available.
+
+## For instructors
+
+Use the [BuildAWorkshop](https://github.com/seandavi/BuildABiocWorkshop2020) template repo **or**
+simply create a docker image that presents a web application (Rstudio, Jupyter Lab, Shiny App, etc)
+and [send me an email](mailto:seandavi@gmail.com).
+
+# Technical notes
 
 We use these projects:
 
