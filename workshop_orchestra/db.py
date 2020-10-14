@@ -59,6 +59,16 @@ async def get_workshops(id=None):
     res = await database.fetch_one(f'select * from workshops where id = {id}')
     return(res)
 
+async def create_new_workshop(description: str, container: str, url: str=None):
+    await connect()
+    sql = workshops.insert().values(
+        description = description,
+        container = container,
+        url = url
+    )
+    res = await database.execute(sql)
+    return res
+
 async def add_instance(name, email, container):
     await connect()
     query = instance_events.insert().values(

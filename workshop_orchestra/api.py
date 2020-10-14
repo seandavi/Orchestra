@@ -5,6 +5,7 @@ import string
 import random
 import re
 import asyncio
+import typing
 
 from typing import Optional
 
@@ -44,6 +45,13 @@ class Item(BaseModel):
     price: float
     is_offer: Optional[bool] = None
 
+class BaseContainer(BaseModel):
+    description: str
+    url: str=None
+    container: str
+
+class ExistingContainer(BaseContainer):
+    id: int
 
 @app.get("/")
 async def read_root(request: Request):
@@ -75,6 +83,18 @@ async def create_new_instance_web(request: Request, container: str, email: str):
                                           "url": res['url'],
                                           "name": res["name"]
                                       })
+
+@app.get('/containers')
+async def get_containers() -> typing.List[ExistingContainer]:
+    res = await db.get_workshops()
+    res = list([ExistingContainer(**r) for r in res])
+    return res
+
+@app.post("/containers")
+async def create_container(container: BaseContainer):
+    res = await db.create_new_workshop(**container.dict())
+    return res
+
 
 @app.get("/ready")
 async def instance_is_ready(name: str):
