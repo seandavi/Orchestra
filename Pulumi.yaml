@@ -1,0 +1,5 @@
+name: Orchestra
+runtime:
+  name: python
+main: workshop_orchestra/pulumi/
+description: Workshop orchestration platform for kubernetes
