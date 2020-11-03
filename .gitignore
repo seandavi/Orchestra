@@ -3,3 +3,6 @@
 __pycache__
 .mypy_cache
 docs/build
+.venv
+.DS_Store
+workshop_orchestra.egg-info
