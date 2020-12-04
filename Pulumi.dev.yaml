@@ -1,5 +1,3 @@
 config:
-  Orchestra:DB_DSN:
-    secure: AAABACSWLPgh0CvgJd1JpzvsjVmgNl2wbKTAR779UD/Iqisd6kJtL31OMQJToPiuIKTe8eNGS0UY3biFY86vDXwaTB/8Q4lb+WwSpXq7szgcFHOdn8f8eHycg9DLkHXZnzmJOQidAewjLtuCEcbDiTffPzORzwKf
   gcp:project: nih-strides-orchestra
   gcp:zone: us-central1
