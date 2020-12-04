@@ -6,9 +6,12 @@ FROM python:3.7
 COPY pyproject.toml pyproject.toml
 COPY poetry.lock poetry.lock
 
+RUN apt-get update
+RUN apt-get install -y cmake
 RUN pip install poetry
 RUN poetry config virtualenvs.create false
 RUN poetry install --no-dev -n
+
 
 RUN rm -rf /root/.ssh
 

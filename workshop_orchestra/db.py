@@ -20,13 +20,56 @@ instance_events = sqlalchemy.Table(
     sqlalchemy.Column("timestamp", sqlalchemy.DateTime)
 )
 
-workshops = sqlalchemy.Table(
+workshop = sqlalchemy.Table(
     "workshops",
     metadata,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
     sqlalchemy.Column("description", sqlalchemy.Text),
     sqlalchemy.Column("url", sqlalchemy.Text),
-    sqlalchemy.Column("container", sqlalchemy.Text)
+    sqlalchemy.Column("container", sqlalchemy.Text),
+    sqlalchemy.Column("port", sqlalchemy.Integer,
+                      comment="The port on which the container listens"),
+    sqlalchemy.Column("memory", sqlalchemy.Text),
+    sqlalchemy.Column("cpu", sqlalchemy.Text)
+)
+
+tag = sqlalchemy.Table(
+    "tags",
+    metadata,
+    sqlalchemy.Column("tag", sqlalchemy.String, unique=True)
+)
+
+workshop_tag = sqlalchemy.Table(
+    "workshop_tags",
+    metadata,
+    sqlalchemy.Column("tag_id", sqlalchemy.Integer,
+                      sqlalchemy.ForeignKey("tags.id"),
+                      nullable=False, index=True),
+    sqlalchemy.Column("workshop_id", sqlalchemy.Integer,
+                      sqlalchemy.ForeignKey("workshops.id"),
+                      nullable=False, index=True),
+    sqlalchemy.UniqueConstraint('workshop_id', 'tag_id')
+)
+
+workshop_collection = sqlalchemy.Table(
+    "workshop_collections",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column("name", sqlalchemy.String, unique=True),
+    sqlalchemy.Column("url", sqlalchemy.String),
+    sqlalchemy.Column("description", sqlalchemy.String)
+)
+
+workshop_workshop_collection = sqlalchemy.Table(
+    "workshop_workshop_collections",
+    metadata,
+    sqlalchemy.Column("workshop_id", sqlalchemy.Integer,
+                      sqlalchemy.ForeignKey("workshops.id"),
+                      nullable=False, index=True),
+    sqlalchemy.Column("workshop_collection_id", sqlalchemy.Integer,
+                      sqlalchemy.ForeignKey("workshop_collections.id"),
+                      nullable=False, index=True),
+    sqlalchemy.UniqueConstraint('workshop_id', 'workshop_collection_id')
 )
 
 
@@ -52,16 +95,26 @@ async def get_existing_workshop(email, container):
     return res
 
 async def get_workshops(id=None):
+    query = """
+    select workshops.*,counts.launches
+    from workshops
+    join (
+          select container, count(*) as launches
+          from instance_events
+          group by container
+    ) counts
+    on workshops.container=counts.container"""
     await connect()
     if(id is None):
-        res = await database.fetch_all('select * from workshops')
+        res = await database.fetch_all(query)
         return res
-    res = await database.fetch_one(f'select * from workshops where id = {id}')
+    query = query + f'select * from workshops where id = {id}'
+    res = await database.fetch_one(query)
     return(res)
 
 async def create_new_workshop(description: str, container: str, url: str=None):
     await connect()
-    sql = workshops.insert().values(
+    sql = workshop.insert().values(
         description = description,
         container = container,
         url = url
@@ -85,6 +138,54 @@ async def delete_instance(name):
     res = await database.execute(query)
     return True
 
+async def get_tags():
+    await connect()
+    query = tag.select()
+    res = await database.fetch_all(query)
+    return res
+
+async def create_new_tag(new_tag) -> dict:
+    await connect()
+    query = tag.insert().values(new_tag)
+    res = await database.fetch_one(query)
+    return res
+
+async def create_new_collection(name: str, url: str=None, description: str=None) -> dict:
+    await connect()
+    query = workshop_collection.insert().values(
+        name=name, url=url, description=description
+    )
+    res = await database.fetch_one(query)
+    return res
+
+async def list_collections():
+    await connect()
+    query = workshop_collection.select()
+    res = await database.fetch_all(query)
+    return res
+
+async def delete_collection(id:int):
+    await connect()
+    query = workshop_collection.delete().where(workshop_collection.c.id==id)
+    res = await database.fetch_one(query)
+    return {'delete': id}
+
+async def new_collection_workshop(workshop_id: int, collection_id: int):
+    await connect()
+    query = workshop_workshop_collection.insert().values(
+        workshop_id=workshop_id,
+        workshop_collection_id = collection_id
+    )
+    res = await database.fetch_one(query)
+    return res
+
+async def workshops_by_collection(collection_id: int):
+    await connect()
+    query = workshop.select().select_from(workshop.join(
+        workshop_workshop_collection,
+        workshop_workshop_collection.c.workshop_collection_id==collection_id))
+    res = await database.fetch_all(query)
+    return res
 
 if __name__ == '__main__':
     engine = sqlalchemy.create_engine(config('SQLALCHEMY_URI'))

@@ -10,31 +10,53 @@ import typing
 from typing import Optional
 
 from workshop_orchestra import db
-
+from .graphql import graphql_app
 
 from fastapi import FastAPI, Depends, Request
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette_prometheus import metrics, PrometheusMiddleware
 
-from starlette.responses import RedirectResponse
+from starlette.responses import HTMLResponse, RedirectResponse
+from starlette.authentication import requires
 from pydantic import BaseModel
+from authlib.integrations.starlette_client import OAuth
+from fastapi.security.oauth2 import OAuth2
 
 from . import kube_utils
 from .security import check_authentication_header
 from .description import api_description
 from .config import config
+import json
 
 app = FastAPI(title="Workshop Orchestration API",
-              description = api_description)
+              description=api_description)
 app.add_middleware(SessionMiddleware, secret_key=config('API_KEY'))
 app.add_middleware(PrometheusMiddleware)
-app.add_route("/metrics/", metrics)
+app.add_route('/graphql', graphql_app)
 
+origins = [
+    "http://localhost.tiangolo.com",
+    "https://localhost.tiangolo.com",
+    "http://localhost",
+    "http://localhost:8080",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.add_route("/metrics/", metrics)
 
 logging.basicConfig(level=logging.INFO)
 
 templates = Jinja2Templates(directory="workshop_orchestra/templates")
+
 
 def random_string(k: int=8):
     return ''.join(random.choices(string.ascii_lowercase, k=k))
@@ -53,14 +75,94 @@ class BaseContainer(BaseModel):
 class ExistingContainer(BaseContainer):
     id: int
 
-@app.get("/")
+class TagItem(BaseModel):
+    tag: str
+
+class TagReturnItem(TagItem):
+    id: int
+
+
+oauth = OAuth(config)
+
+CONF_URL = 'http://login.cancerdatasci.org:8080/auth/realms/myrealm/.well-known/openid-configuration'
+oauth.register(
+    name='myclient',
+    server_metadata_url=CONF_URL,
+    client_id='myclient',
+    client_kwargs={
+        'scope': 'openid email profile'
+    }
+)
+
+
+
+CONF_URL = 'https://accounts.google.com/.well-known/openid-configuration'
+oauth.register(
+    name='google',
+    server_metadata_url=CONF_URL,
+    client_kwargs={
+        'scope': 'openid email profile',
+        'hostedDomain': 'gmail.com'
+    }
+)
+
+@app.route('/')
+async def homepage(request):
+    user = request.session.get('user')
+    if user:
+        data = json.dumps(user)
+        html = (
+            f'<pre>{data}</pre>'
+            '<a href="/logout">logout</a>'
+        )
+        return HTMLResponse(html)
+    return HTMLResponse('<a href="/login">login</a>')
+
+
+@app.route('/login')
+async def login(request):
+    redirect_uri = request.url_for('auth')
+    return await oauth.google.authorize_redirect(request, redirect_uri+'?hd=*')
+
+
+@app.route('/auth')
+async def auth(request):
+    token = await oauth.google.authorize_access_token(request)
+    user = await oauth.google.parse_id_token(request, token)
+    request.session['user'] = dict(user)
+    return RedirectResponse(url='/')
+
+
+@app.route('/logout')
+async def logout(request):
+    request.session.pop('user', None)
+    return RedirectResponse(url='/')
+
+
+
+@app.get("/1")
 async def read_root(request: Request):
     logging.info(request.session)
     request.session['data'] = 'abc'
     containers = await db.get_workshops()
+    user=request.session.get('user')
+    if not user:
+        return RedirectResponse('/')
     return templates.TemplateResponse("start.html", {"request": request,
                                                      "containers": containers
     })
+
+@app.get('/new_workshop')
+async def new_workshop_web(request: Request, i = Depends(lambda x: True)):
+    logging.info(request.session)
+    logging.info(i)
+    containers = await db.get_workshops()
+    return templates.TemplateResponse(
+        "new.html", {
+            "request": request,
+            "containers": containers
+        }
+    )
 
 @app.get("/instance")
 async def create_new_instance_web(request: Request, container: str, email: str):
@@ -96,6 +198,18 @@ async def create_container(container: BaseContainer):
     return res
 
 
+@app.get("/tags")
+async def get_tags() -> typing.List[TagReturnItem]:
+    res = await db.get_tags()
+    res = list([TagReturnItem(**r) for r in res])
+    return res
+
+@app.post("/tags")
+async def new_tag(new_tag: TagItem) -> TagReturnItem:
+    res = await db.create_new_tag(new_tag.dict())
+    res = new_tag.dict().update({"id":res})
+    return TagReturnItem(**new_tag)
+
 @app.get("/ready")
 async def instance_is_ready(name: str):
     res = kube_utils.deployment_is_ready(name)
@@ -113,6 +227,40 @@ async def delete_instance(name: str):
         print(e)
         return None
     return {"name": name, "status": "DELETED"}
+
+class Collection(BaseModel):
+    name: str
+    description: str=None
+    url: str=None
+
+class CollectionOut(Collection):
+    id: int
+
+@app.get("/collections")
+async def list_collections() -> list:
+    res = await db.list_collections()
+    return [CollectionOut(**r) for r in res]
+
+@app.post("/collections")
+async def create_new_collection(collection: Collection):
+    res = await db.create_new_collection(**collection.dict())
+    return res
+
+@app.delete("/collections/{collection_id}")
+async def delete_collection(collection_id: int):
+    res = await db.delete_collection(collection_id)
+    return res
+
+@app.get("/collections/{collection_id}/workshops")
+async def workshops_for_collection(collection_id: int):
+    res = await db.workshops_by_collection(collection_id)
+    return res
+
+@app.post("/collections/{collection_id}/workshops/{workshop_id}")
+async def delete_workshop_from_collection(collection_id: int, workshop_id: int):
+    res = await db.new_collection_workshop(workshop_id=workshop_id, collection_id=collection_id)
+    return res
+
 
 async def _new_instance(container: str, repo: str, email: Optional[str] = None,
                  ref: Optional[str] = None,

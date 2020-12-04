@@ -67,7 +67,7 @@ def create_ingress(api_instance, name):
         "spec": {
             "rules": [
                 {
-                    "host": f"{name}.bioc.cancerdatasci.org",
+                    "host": f"{name}.orchestra.cancerdatasci.org",
                     "http": {
                         "paths": [
                             {
