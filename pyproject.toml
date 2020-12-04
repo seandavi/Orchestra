@@ -18,6 +18,15 @@ itsdangerous = "^1.1.0"
 asyncio = "^3.4.3"
 starlette_prometheus = "^0.7.0"
 kubernetes_asyncio = "^11.3.0"
+graphene = "^2.1.8"
+aiohttp-graphql = "^1.1.0"
+tartiflette-asgi = "^0.9.0"
+tartiflette-aiohttp = "^1.3.1"
+typesystem = "^0.2.4"
+Authlib = "^0.15.2"
+httpx = "^0.16.1"
+keycloak-client = {extras = ["extensions"], version = "^0.15.4"}
+keycloak = {extras = ["extensions"], version = "^3.0.0"}
 
 [tool.poetry.dev-dependencies]
 ipython = "^7.16.1"
