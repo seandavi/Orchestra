@@ -1,6 +1,9 @@
 from kubernetes import client, config
 import os
+import string
+import random
 import workshop_orchestra.db as db
+
 
 namespace = 'default'
 if os.getenv('KUBERNETES_SERVICE_HOST'):
@@ -13,6 +16,14 @@ async def get_deployment(name):
     res = api_instance.read_namespaced_deployment(name,'default')
     return res
 
+def random_string(chars: str=string.ascii_letters, k: int=8) -> str:
+    """Generate a random string
+
+    Parameters:
+    chars: str character set as a single string eg., 'abcdefGHIJKH'
+    k: int length of resulting string
+    """
+    return ''.join(random.choices(chars,k=k))
 
 def deployment_is_ready(name):
     api_instance = client.AppsV1Api()
