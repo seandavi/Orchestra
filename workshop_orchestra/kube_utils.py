@@ -1,6 +1,7 @@
 from kubernetes import client, config
 import os
 import string
+import hashlib
 import random
 import workshop_orchestra.db as db
 
@@ -25,7 +26,8 @@ def hash_key(key: str, k: int=8) -> str:
     """
     if(k>32):
         k=32
-    return hashlib.sha1(key).hexdigest()[:k]
+    return ''.join(random.choices(string.ascii_lowercase, k=k))
+    # return hashlib.sha1(key.encode('UTF-8')).hexdigest()[:k]
 
 def deployment_is_ready(name):
     api_instance = client.AppsV1Api()
@@ -264,7 +266,7 @@ def create_service(api_instance, name, port=8787):
 
 async def create_instance(workshop_id, email, name=None):
     workshop = await db.get_workshops(id=workshop_id)
-    name = "abc123"
+    name = hash_key(str(workshop_id) + email)
     container = workshop.get('container')
     api_instance = client.AppsV1Api()
     namespace = 'default'
@@ -277,7 +279,7 @@ async def create_instance(workshop_id, email, name=None):
     # create_ingress(api_instance,name)
     api_instance = client.CustomObjectsApi()
     create_virtual_service(api_instance,name)
-    return {'url': 'http://abc123.orchestra.cancerdatasci.org', 'name': name}
+    return {'url': f'http://{name}.orchestra.cancerdatasci.org', 'name': name}
 
 import click
 
