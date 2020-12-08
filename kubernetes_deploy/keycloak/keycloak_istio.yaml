@@ -1,0 +1,13 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: keycloak
+spec:
+  hosts:
+  - "login.cancerdatasci.org"
+  gateways:
+  - orchestra-gateway
+  http:
+  - route:
+    - destination:
+        host: keycloak.default.svc.cluster.local

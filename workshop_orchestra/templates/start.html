@@ -13,15 +13,15 @@
       <p>Hi, {{ request.session.get('user')['given_name'] }}</p>
       <div class="row">
 
-        {% for container in containers %}
+        {% for workshop in workshops %}
         <div class="card p-3 m-3" style="width: 18rem;">
           <p class="card-text">
-            {{ container.get('description') }}
-            {{ container.get('launches') }}
+            {{ workshop.get('description') }}
+            {{ workshop.get('launches') }}
           </p>
 
           <a
-            href="/instance?container={{ container.get('container') }}&email={{ request.session.get('user')['email'] }}"
+            href="/instance?workshop_id={{ workshop.get('id') }}"
             class="btn btn-primary">
             Launch This
           </a>

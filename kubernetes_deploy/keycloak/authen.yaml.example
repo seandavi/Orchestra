@@ -1,0 +1,14 @@
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: require-jwt
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+       requestPrincipals: ["http://34.69.208.151:8080/auth/realms/myrealm/5a994a10-a708-45a7-8c1c-b16e9277e55c"]
+

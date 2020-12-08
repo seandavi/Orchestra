@@ -84,11 +84,12 @@ class TagReturnItem(TagItem):
 
 oauth = OAuth(config)
 
-CONF_URL = 'http://login.cancerdatasci.org:8080/auth/realms/myrealm/.well-known/openid-configuration'
+# Keycloak details
+CONF_URL = 'http://login.cancerdatasci.org/auth/realms/cancerdatasci/.well-known/openid-configuration'
 oauth.register(
-    name='myclient',
+    name='keycloak_client',
     server_metadata_url=CONF_URL,
-    client_id='myclient',
+    client_id='login',
     client_kwargs={
         'scope': 'openid email profile'
     }
@@ -96,15 +97,15 @@ oauth.register(
 
 
 
-CONF_URL = 'https://accounts.google.com/.well-known/openid-configuration'
-oauth.register(
-    name='google',
-    server_metadata_url=CONF_URL,
-    client_kwargs={
-        'scope': 'openid email profile',
-        'hostedDomain': 'gmail.com'
-    }
-)
+# CONF_URL = 'https://accounts.google.com/.well-known/openid-configuration'
+# oauth.register(
+#     name='google',
+#     server_metadata_url=CONF_URL,
+#     client_kwargs={
+#         'scope': 'openid email profile',
+#         'hostedDomain': 'gmail.com'
+#     }
+# )
 
 @app.route('/')
 async def homepage(request):
@@ -115,20 +116,20 @@ async def homepage(request):
             f'<pre>{data}</pre>'
             '<a href="/logout">logout</a>'
         )
-        return HTMLResponse(html)
+        return RedirectResponse('/1')
     return HTMLResponse('<a href="/login">login</a>')
 
 
 @app.route('/login')
 async def login(request):
     redirect_uri = request.url_for('auth')
-    return await oauth.google.authorize_redirect(request, redirect_uri+'?hd=*')
+    return await oauth.keycloak_client.authorize_redirect(request, redirect_uri)
 
 
 @app.route('/auth')
 async def auth(request):
-    token = await oauth.google.authorize_access_token(request)
-    user = await oauth.google.parse_id_token(request, token)
+    token = await oauth.keycloak_client.authorize_access_token(request)
+    user = await oauth.keycloak_client.parse_id_token(request, token)
     request.session['user'] = dict(user)
     return RedirectResponse(url='/')
 
@@ -143,13 +144,12 @@ async def logout(request):
 @app.get("/1")
 async def read_root(request: Request):
     logging.info(request.session)
-    request.session['data'] = 'abc'
-    containers = await db.get_workshops()
+    workshops = await db.get_workshops()
     user=request.session.get('user')
     if not user:
         return RedirectResponse('/')
     return templates.TemplateResponse("start.html", {"request": request,
-                                                     "containers": containers
+                                                     "workshops": workshops
     })
 
 @app.get('/new_workshop')
@@ -164,20 +164,26 @@ async def new_workshop_web(request: Request, i = Depends(lambda x: True)):
         }
     )
 
+
+# TODO ensure logged in else redirect
 @app.get("/instance")
-async def create_new_instance_web(request: Request, container: str, email: str):
-    repo = re.sub('[:#].*','',container).split('/')[1]
+async def create_new_instance_web(request: Request, workshop_id: int):
+    """Create a new instance or return existing one
+    """
 
-    res = await db.get_existing_workshop(email, container)
+    email = request.session.get('user')['email']
+    workshop = await db.get_workshops(id=workshop_id)
+    container = workshop.get('container')
+    # res = await db.get_existing_workshop(email, container)
 
-    if(len(res)>0):
-        try:
-            stuff = deployment_is_ready(res[0].get('name'))
-            if(stuff):
-                return RedirectResponse('http://'+res[0].get('name')+".bioc.cancerdatasci.org")
-        except:
-            logging.info(f"{container} instance {res[0].get('name')} for email {email} not found, so creating a new one")
-    res = await _new_instance(container, repo, email)
+    # if(len(res)>0):
+    #     try:
+    #         stuff = deployment_is_ready(res[0].get('name'))
+    #         if(stuff):
+    #             return RedirectResponse('http://'+res[0].get('name')+".bioc.cancerdatasci.org")
+    #     except:
+    #         logging.info(f"{container} instance {res[0].get('name')} for email {email} not found, so creating a new one")
+    res = await kube_utils.create_instance(workshop_id, email)
     #await asyncio.sleep(2)
     return templates.TemplateResponse('new_instance.html',
                                       {
@@ -185,6 +191,11 @@ async def create_new_instance_web(request: Request, container: str, email: str):
                                           "url": res['url'],
                                           "name": res["name"]
                                       })
+
+@app.get("/ready")
+async def instance_is_ready(name: str):
+    res = kube_utils.deployment_is_ready(name)
+    return {'is_ready': res}
 
 @app.get('/containers')
 async def get_containers() -> typing.List[ExistingContainer]:
@@ -210,11 +221,7 @@ async def new_tag(new_tag: TagItem) -> TagReturnItem:
     res = new_tag.dict().update({"id":res})
     return TagReturnItem(**new_tag)
 
-@app.get("/ready")
-async def instance_is_ready(name: str):
-    res = kube_utils.deployment_is_ready(name)
-    return {'is_ready': res}
-
+# TODO these need to be converted to instance.
 @app.get("/instance/{name}")
 async def get_instance(name: str):
     return await kube_utils.get_deployment(name)
@@ -261,9 +268,8 @@ async def delete_workshop_from_collection(collection_id: int, workshop_id: int):
     res = await db.new_collection_workshop(workshop_id=workshop_id, collection_id=collection_id)
     return res
 
-
-async def _new_instance(container: str, repo: str, email: Optional[str] = None,
-                 ref: Optional[str] = None,
+# FIXME this is no longer used
+async def _new_instance(workshop_id: int, email: Optional[str] = None,
                  stuff: bool = Depends(check_authentication_header)):
     """Create a new instance of the container called org/repo
     """
@@ -275,6 +281,6 @@ async def _new_instance(container: str, repo: str, email: Optional[str] = None,
     s = random_string()
     inst_name = f"{repo}-{s}"
     kube_utils.create_instance(inst_name, container, email)
-    d.update({"name": inst_name, "url": f"http://{inst_name}.bioc.cancerdatasci.org/"})
+    d.update({"name": inst_name, "url": f"http://{inst_name}.orchestra.cancerdatasci.org/"})
     await db.add_instance(name=inst_name, email=email, container=container)
     return d
