@@ -1,75 +1,87 @@
 import datetime
 
-import sqlalchemy
+import sqlalchemy as sa
 
 from databases import Database
 from sqlalchemy import func, desc, and_
 
 from .config import config
 
-metadata = sqlalchemy.MetaData()
+metadata = sa.MetaData()
 
-instance_events = sqlalchemy.Table(
+instance_events = sa.Table(
     "instance_events",
     metadata,
-    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
-    sqlalchemy.Column("name", sqlalchemy.Text, index=True),
-    sqlalchemy.Column("container", sqlalchemy.Text),
-    sqlalchemy.Column("email", sqlalchemy.Text, index=True),
-    sqlalchemy.Column("status", sqlalchemy.Text),
-    sqlalchemy.Column("timestamp", sqlalchemy.DateTime)
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("instance_id", sa.Integer,
+                      sa.ForeignKey('instances.id'),
+                      index=True),
+    sa.Column("status", sa.Text),
+    sa.Column("timestamp", sa.DateTime)
 )
 
-workshop = sqlalchemy.Table(
+instance = sa.Table(
+    "instances",
+    metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column('email', sa.Text, index=True),
+    sa.Column('workshop_id', sa.Integer,
+              sa.ForeignKey('workshops.id'),
+              index=True)
+)
+
+workshop = sa.Table(
     "workshops",
     metadata,
-    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
-    sqlalchemy.Column("description", sqlalchemy.Text),
-    sqlalchemy.Column("url", sqlalchemy.Text),
-    sqlalchemy.Column("container", sqlalchemy.Text),
-    sqlalchemy.Column("port", sqlalchemy.Integer,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("title", sa.Text),
+    sa.Column("description", sa.Text),
+    sa.Column("url", sa.Text),
+    sa.Column("container", sa.Text),
+    sa.Column("port", sa.Integer,
                       comment="The port on which the container listens"),
-    sqlalchemy.Column("memory", sqlalchemy.Text),
-    sqlalchemy.Column("cpu", sqlalchemy.Text)
+    sa.Column("memory", sa.Text),
+    sa.Column("cpu", sa.Text)
 )
 
-tag = sqlalchemy.Table(
+tag = sa.Table(
     "tags",
     metadata,
-    sqlalchemy.Column("tag", sqlalchemy.String, unique=True)
+    sa.Column('id', sa.Integer, primary_key=True),
+    sa.Column("tag", sa.String, unique=True)
 )
 
-workshop_tag = sqlalchemy.Table(
+workshop_tag = sa.Table(
     "workshop_tags",
     metadata,
-    sqlalchemy.Column("tag_id", sqlalchemy.Integer,
-                      sqlalchemy.ForeignKey("tags.id"),
+    sa.Column("tag_id", sa.Integer,
+                      sa.ForeignKey("tags.id"),
                       nullable=False, index=True),
-    sqlalchemy.Column("workshop_id", sqlalchemy.Integer,
-                      sqlalchemy.ForeignKey("workshops.id"),
+    sa.Column("workshop_id", sa.Integer,
+                      sa.ForeignKey("workshops.id"),
                       nullable=False, index=True),
-    sqlalchemy.UniqueConstraint('workshop_id', 'tag_id')
+    sa.UniqueConstraint('workshop_id', 'tag_id')
 )
 
-workshop_collection = sqlalchemy.Table(
+workshop_collection = sa.Table(
     "workshop_collections",
     metadata,
-    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
-    sqlalchemy.Column("name", sqlalchemy.String, unique=True),
-    sqlalchemy.Column("url", sqlalchemy.String),
-    sqlalchemy.Column("description", sqlalchemy.String)
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("name", sa.String, unique=True),
+    sa.Column("url", sa.String),
+    sa.Column("description", sa.String)
 )
 
-workshop_workshop_collection = sqlalchemy.Table(
+workshop_workshop_collection = sa.Table(
     "workshop_workshop_collections",
     metadata,
-    sqlalchemy.Column("workshop_id", sqlalchemy.Integer,
-                      sqlalchemy.ForeignKey("workshops.id"),
+    sa.Column("workshop_id", sa.Integer,
+                      sa.ForeignKey("workshops.id"),
                       nullable=False, index=True),
-    sqlalchemy.Column("workshop_collection_id", sqlalchemy.Integer,
-                      sqlalchemy.ForeignKey("workshop_collections.id"),
+    sa.Column("workshop_collection_id", sa.Integer,
+                      sa.ForeignKey("workshop_collections.id"),
                       nullable=False, index=True),
-    sqlalchemy.UniqueConstraint('workshop_id', 'workshop_collection_id')
+    sa.UniqueConstraint('workshop_id', 'workshop_collection_id')
 )
 
 
@@ -83,32 +95,27 @@ async def connect():
 async def get_outdated_workshops(interval = '4 hours'):
     query = f"""with s as (select name, status, timestamp, row_number() over (partition by name order by timestamp desc) as rk from instance_events) select s.*, current_timestamp-s.timestamp as age from s whe
  re s.rk=1 and current_timestamp-s.timestamp > interval '{interval}' and status!='DELETED'"""
-    await db.connect()
+    await connect()
     res = await database.fetch_all(query)
 
 
-async def get_existing_workshop(email, container):
+async def get_existing_workshop(email, workshop_id):
     await connect()
-    i = instance_events
-    query = i.select().where(and_(i.c.email==email, i.c.container==container)).order_by(desc('timestamp'))
+    i = instance
+    query = i.select().where(and_(i.c.email==email, i.c.workshop_id==workshop_id)).order_by(desc('timestamp'))
     res = await database.fetch_all(query)
     return res
 
 async def get_workshops(id=None):
-    query = """
-    select workshops.*,counts.launches
-    from workshops
-    join (
-          select container, count(*) as launches
-          from instance_events
-          group by container
-    ) counts
-    on workshops.container=counts.container"""
+    query = workshop.join(
+        sa.select([instance.c.workshop_id,sa.func.count(instance.c.workshop_id).label('launches')])
+        .group_by(instance.c.workshop_id).alias('abc')
+    ).select()
     await connect()
     if(id is None):
         res = await database.fetch_all(query)
         return res
-    query = query + f'select * from workshops where id = {id}'
+    query = query.where(workshop.c.id==id)
     res = await database.fetch_one(query)
     return(res)
 
@@ -188,5 +195,5 @@ async def workshops_by_collection(collection_id: int):
     return res
 
 if __name__ == '__main__':
-    engine = sqlalchemy.create_engine(config('SQLALCHEMY_URI'))
+    engine = sa.create_engine(config('SQLALCHEMY_URI'))
     metadata.create_all(engine)
