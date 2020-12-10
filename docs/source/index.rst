@@ -12,6 +12,14 @@ Orchestra is a platform for running `custom` computing environments, each in the
 .. _`Jupyter notebooks`: https://jupyter.org
 .. _Rstudio: https://rstudio.com
 
+
+Starting the cluster
+--------------------
+
+.. code-block:: bash
+   gcloud beta container --project "nih-strides-orchestra" clusters create "orchestra" --zone "us-central1-c" --no-enable-basic-auth --cluster-version "1.17.13-gke.2001" --release-channel "regular" --machine-type "e2-medium" --image-type "COS" --disk-type "pd-standard" --disk-size "100" --metadata disable-legacy-endpoints=true --scopes "https://www.googleapis.com/auth/devstorage.read_only","https://www.googleapis.com/auth/logging.write","https://www.googleapis.com/auth/monitoring","https://www.googleapis.com/auth/servicecontrol","https://www.googleapis.com/auth/service.management.readonly","https://www.googleapis.com/auth/trace.append" --num-nodes "3" --enable-stackdriver-kubernetes --enable-ip-alias --network "projects/nih-strides-orchestra/global/networks/default" --subnetwork "projects/nih-strides-orchestra/regions/us-central1/subnetworks/default" --default-max-pods-per-node "110" --no-enable-master-authorized-networks --addons HorizontalPodAutoscaling,HttpLoadBalancing --enable-autoupgrade --enable-autorepair --max-surge-upgrade 1 --max-unavailable-upgrade 0 --labels project=orchestra && gcloud beta container --project "nih-strides-orchestra" node-pools create "pool-1" --cluster "orchestra" --zone "us-central1-c" --machine-type "e2-highmem-4" --image-type "COS" --disk-type "pd-standard" --disk-size "200" --metadata disable-legacy-endpoints=true --scopes "https://www.googleapis.com/auth/devstorage.read_only","https://www.googleapis.com/auth/logging.write","https://www.googleapis.com/auth/monitoring","https://www.googleapis.com/auth/servicecontrol","https://www.googleapis.com/auth/service.management.readonly","https://www.googleapis.com/auth/trace.append" --num-nodes "3" --enable-autoscaling --min-nodes "0" --max-nodes "20" --enable-autoupgrade --enable-autorepair --max-surge-upgrade 1 --max-unavailable-upgrade 0
+
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
