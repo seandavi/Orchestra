@@ -117,7 +117,7 @@ async def homepage(request):
             '<a href="/logout">logout</a>'
         )
         return RedirectResponse('/1')
-    return HTMLResponse('<a href="/login">login</a>')
+    return templates.TemplateResponse("home.html", context={"request": request})
 
 
 @app.route('/login')

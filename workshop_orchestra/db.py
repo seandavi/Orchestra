@@ -27,7 +27,8 @@ instance = sa.Table(
     sa.Column('email', sa.Text, index=True),
     sa.Column('workshop_id', sa.Integer,
               sa.ForeignKey('workshops.id'),
-              index=True)
+              index=True),
+    sa.Column('name', sa.Text, index=True, unique=True)
 )
 
 workshop = sa.Table(
@@ -109,7 +110,8 @@ async def get_existing_workshop(email, workshop_id):
 async def get_workshops(id=None):
     query = workshop.join(
         sa.select([instance.c.workshop_id,sa.func.count(instance.c.workshop_id).label('launches')])
-        .group_by(instance.c.workshop_id).alias('abc')
+        .group_by(instance.c.workshop_id).alias('abc'),
+        isouter=True
     ).select()
     await connect()
     if(id is None):
@@ -129,19 +131,24 @@ async def create_new_workshop(description: str, container: str, url: str=None):
     res = await database.execute(sql)
     return res
 
-async def add_instance(name, email, container):
+async def add_instance(name, email, workshop_id):
     await connect()
-    query = instance_events.insert().values(
-        name=name, email=email, container=container,
-        status = 'CREATED', timestamp=datetime.datetime.utcnow())
+    query = instance.insert().values({"name": name, "workshop_id": workshop_id, "email": email})
+    inst = await database.execute(query)
+    query = instance_events.insert().values({
+        "instance_id":inst,
+        "status":'CREATED', "timestamp":datetime.datetime.utcnow()})
     res = await database.execute(query)
     return True
 
 async def delete_instance(name):
     await connect()
-    query = instance_events.insert().values(
-        name=name, status="DELETED", timestamp=datetime.datetime.utcnow()
-    )
+    query = instance.select().where(instance.c.name==name)
+    res = await database.fetch_one()
+    query = instance_events.insert().values({
+        "instance_id":inst,
+        "status":'DELETED', "timestamp":datetime.datetime.utcnow()
+    })
     res = await database.execute(query)
     return True
 
@@ -153,7 +160,7 @@ async def get_tags():
 
 async def create_new_tag(new_tag) -> dict:
     await connect()
-    query = tag.insert().values(new_tag)
+    query = tag.insert().values({"tag":new_tag})
     res = await database.fetch_one(query)
     return res
 
