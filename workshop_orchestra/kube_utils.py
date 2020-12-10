@@ -270,15 +270,19 @@ async def create_instance(workshop_id, email, name=None):
     container = workshop.get('container')
     api_instance = client.AppsV1Api()
     namespace = 'default'
-    create_deployment(api_instance,name,container, email)
+    create_deployment(api_instance,name,container, email,
+                      memory=workshop.get('memory'),
+                      cpu=workshop.get('cpu'),
+                      port=workshop.get('port'))
     api_instance = client.CoreV1Api()
-    create_service(api_instance,name)
+    create_service(api_instance,name, port=workshop.get('port'))
     # lines below are for traefik
     # Not needed since switching to istio
     # api_instance = client.ExtensionsV1beta1Api()
     # create_ingress(api_instance,name)
     api_instance = client.CustomObjectsApi()
     create_virtual_service(api_instance,name)
+    await db.add_instance(name=name,email=email,workshop_id=workshop_id)
     return {'url': f'http://{name}.orchestra.cancerdatasci.org', 'name': name}
 
 import click
