@@ -6,3 +6,5 @@ docs/build
 .venv
 .DS_Store
 workshop_orchestra.egg-info
+.dev
+nih-strides-orchestra*
