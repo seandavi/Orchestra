@@ -5,7 +5,7 @@ a flexible approach to making workshop or tutorial materials available to any us
 world via an Rstudio, Jupyter Notebook, or any other web-based data science framework (including 
 LearnR shiny apps, for example).
 
-[Give it a try.](http://workshop.bioc.cancerdatasci.org/)
+[Give it a try.](http://app.orchestra.cancerdatasci.org/)
 
 ## For users
 
