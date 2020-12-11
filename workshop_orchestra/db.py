@@ -42,7 +42,8 @@ workshop = sa.Table(
     sa.Column("port", sa.Integer,
                       comment="The port on which the container listens"),
     sa.Column("memory", sa.Text),
-    sa.Column("cpu", sa.Text)
+    sa.Column("cpu", sa.Text),
+    sa.Column("created", sa.DateTime, server_default=func.now())
 )
 
 tag = sa.Table(
@@ -144,12 +145,13 @@ async def add_instance(name, email, workshop_id):
 async def delete_instance(name):
     await connect()
     query = instance.select().where(instance.c.name==name)
-    res = await database.fetch_one()
+    res1 = await database.fetch_one(query)
     query = instance_events.insert().values({
-        "instance_id":inst,
+        "instance_id":res1.get('id'),
         "status":'DELETED', "timestamp":datetime.datetime.utcnow()
     })
-    res = await database.execute(query)
+    res2 = await database.execute(query)
+    print(list(res1.items()))
     return True
 
 async def get_tags():
