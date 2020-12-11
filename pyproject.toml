@@ -39,6 +39,7 @@ pulumi-gcp = "^4.1.0"
 pulumi-kubernetes = "^2.6.3"
 pulumi-random = "^2.4.0"
 yapf = "^0.30.0"
+ERAlchemy = "^1.2.10"
 
 [build-system]
 requires = ["poetry>=0.12"]
