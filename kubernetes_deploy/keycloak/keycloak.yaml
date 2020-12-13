@@ -45,6 +45,23 @@ spec:
               key: KEYCLOAK_PASSWORD
         - name: PROXY_ADDRESS_FORWARDING
           value: "true"
+        - name: DB_VENDOR
+          value: postgres
+        - name: DB_USER
+          value: postgres
+        - name: DB_ADDR
+          valueFrom:
+            secretKeyRef:
+              name: keycloak-pg-host
+              key: KEYCLOAK_PG_HOST
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: keycloak-pg-password
+              key: KEYCLOAK_PG_PASSWORD
+        - name: DB_DATABASE
+          value: keycloak
+      
         ports:
         - name: http
           containerPort: 8080
