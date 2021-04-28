@@ -95,10 +95,14 @@ async def connect():
     await database.connect()
 
 async def get_outdated_workshops(interval = '4 hours'):
-    query = f"""with s as (select name, status, timestamp, row_number() over (partition by name order by timestamp desc) as rk from instance_events) select s.*, current_timestamp-s.timestamp as age from s whe
- re s.rk=1 and current_timestamp-s.timestamp > interval '{interval}' and status!='DELETED'"""
+    query = f"""with s as (select id, status, timestamp, row_number()
+    over (partition by id order by timestamp desc) as rk from instance_events)
+    select s.*, current_timestamp-s.timestamp as age from s
+    where s.rk=1 and current_timestamp-s.timestamp > interval '{interval}'
+    and status!='DELETED'"""
     await connect()
     res = await database.fetch_all(query)
+    return res
 
 
 async def get_existing_workshop(email, workshop_id):
@@ -200,6 +204,13 @@ async def workshops_by_collection(collection_id: int):
     query = workshop.select().select_from(workshop.join(
         workshop_workshop_collection,
         workshop_workshop_collection.c.workshop_collection_id==collection_id))
+    res = await database.fetch_all(query)
+    return res
+
+
+async def instances_by_email(email: str):
+    await connect()
+    query = instance.join(workshop).select().where(instance.c.email==email)
     res = await database.fetch_all(query)
     return res
 

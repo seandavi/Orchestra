@@ -81,10 +81,7 @@ def create_virtual_service(api_instance, name):
         "apiVersion": "networking.istio.io/v1alpha3",
         "kind": "VirtualService",
         "metadata": {
-            "name": f"{name}",
-            "labels": {
-                "org": "bioc"
-            },
+            "name": name
         },
         "spec": {
             "hosts": [
@@ -93,17 +90,30 @@ def create_virtual_service(api_instance, name):
             "gateways": [
                 "orchestra-gateway"
             ],
-
-
-            "http": [{
-                "route": [{
-                    "destination": {
-                        "host": name
-                    }
-                }]
-            }]
+            "http": [
+                {
+                    "match": [
+                        {
+                            "uri": {
+                                "prefix": "/"
+                            }
+                        }
+                    ],
+                    "route": [
+                        {
+                            "destination": {
+                                "host": name,
+                                "port": {
+                                    "number": 80
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
         }
     }
+
     def get_custom_object_details(crd_body):
         group = crd_body["apiVersion"].split("/")[0]
         version = crd_body["apiVersion"].split("/")[1]
