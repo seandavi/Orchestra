@@ -27,6 +27,7 @@ Authlib = "^0.15.2"
 httpx = "^0.16.1"
 keycloak-client = {extras = ["extensions"], version = "^0.15.4"}
 keycloak = {extras = ["extensions"], version = "^3.0.0"}
+google-auth = "^1.30.0"
 
 [tool.poetry.dev-dependencies]
 ipython = "^7.16.1"
