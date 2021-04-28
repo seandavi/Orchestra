@@ -10,7 +10,6 @@ import typing
 from typing import Optional
 
 from workshop_orchestra import db
-from .graphql import graphql_app
 
 from fastapi import FastAPI, Depends, Request
 from fastapi.templating import Jinja2Templates
@@ -34,7 +33,6 @@ app = FastAPI(title="Workshop Orchestration API",
               description=api_description)
 app.add_middleware(SessionMiddleware, secret_key=config('API_KEY'))
 app.add_middleware(PrometheusMiddleware)
-app.add_route('/graphql', graphql_app)
 
 origins = [
     "http://localhost.tiangolo.com",
@@ -56,6 +54,44 @@ app.add_route("/metrics/", metrics)
 logging.basicConfig(level=logging.INFO)
 
 templates = Jinja2Templates(directory="workshop_orchestra/templates")
+
+
+
+#################################################
+#################################################
+#################################################
+from starlette.applications import Starlette
+from starlette.responses import JSONResponse, HTMLResponse
+from starlette.routing import Route
+from google.auth.transport import requests
+import google.oauth2.id_token
+
+@app.route('/login')
+async def homepage(request):
+    print(request.headers)
+    f = open('workshop_orchestra/templates/login_template.html').read()
+    return HTMLResponse(f)
+
+
+firebase_request_adapter = requests.Request()
+
+@app.route('/auth')
+async def loggedin(request):
+    print(request.headers)
+    print(request.cookies)
+    id_token = request.cookies.get('token')
+    claims = google.oauth2.id_token.verify_firebase_token(
+        id_token, firebase_request_adapter)
+    print(claims)
+    request.session['user']=dict(claims)
+    f = open('workshop_orchestra/templates/checklogin.html').read()
+    return HTMLResponse(f)
+
+
+# app = Starlette(debug=True, routes=[
+#     Route('/', homepage),
+#     Route('/loggedin', loggedin)
+# ])
 
 
 def random_string(k: int=8):
@@ -120,13 +156,13 @@ async def homepage(request):
     return templates.TemplateResponse("home.html", context={"request": request})
 
 
-@app.route('/login')
+#@app.route('/login')
 async def login(request):
     redirect_uri = request.url_for('auth')
     return await oauth.keycloak_client.authorize_redirect(request, redirect_uri)
 
 
-@app.route('/auth')
+#@app.route('/auth')
 async def auth(request):
     token = await oauth.keycloak_client.authorize_access_token(request)
     user = await oauth.keycloak_client.parse_id_token(request, token)
