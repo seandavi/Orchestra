@@ -6,7 +6,11 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 async def main():
-    query = f"""with s as (select name, status, timestamp, row_number() over (partition by name order by timestamp desc) as rk from instance_events) select s.*, current_timestamp-s.timestamp as age from s where s.rk=1 and current_timestamp-s.timestamp > interval '8 hours' and status!='DELETED'"""
+    query = f"""
+    with s as (select instance_id, status, timestamp, row_number() over (partition by instance_id order by timestamp desc) as rk
+    from instance_events) select s.*,instances.name, current_timestamp-s.timestamp as age
+    from s join instances on instances.id=s.instance_id where s.rk=1 and current_timestamp-s.timestamp > interval '8 hours' and status!='DELETED'"""
+    
     await db.connect()
     res = await db.database.fetch_all(query)
     for i in res:

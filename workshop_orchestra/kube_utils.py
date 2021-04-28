@@ -70,11 +70,11 @@ def delete_virtual_service(name):
         plural='virtualservices')
 
 async def delete_workshop(name):
-    #await db.delete_instance(name)
     # delete_ingress(name)
     delete_virtual_service(name)
     delete_service(name)
     delete_deployment(name)
+    await db.delete_instance(name)
 
 def create_virtual_service(api_instance, name):
     crd_body = {
