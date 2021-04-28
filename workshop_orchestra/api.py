@@ -85,7 +85,7 @@ async def loggedin(request):
     print(claims)
     request.session['user']=dict(claims)
     f = open('workshop_orchestra/templates/checklogin.html').read()
-    return HTMLResponse(f)
+    return RedirectResponse('/1')
 
 
 # app = Starlette(debug=True, routes=[
@@ -201,6 +201,11 @@ async def new_workshop_web(request: Request, i = Depends(lambda x: True)):
     )
 
 
+@app.get('/instances/{email}')
+async def list_instances(email: str):
+    instances = await db.instances_by_email(email)
+    return list(dict(r.items()) for r in instances)
+
 # TODO ensure logged in else redirect
 @app.get("/instance")
 async def create_new_instance_web(request: Request, workshop_id: int):
@@ -227,6 +232,14 @@ async def create_new_instance_web(request: Request, workshop_id: int):
                                           "url": res['url'],
                                           "name": res["name"]
                                       })
+
+@app.get('/instances/outdated/{interval}')
+async def get_outdated_instances(interval: str='4 hours'):
+    """Get a list of instances that are older than "interval"
+    """
+    outdated_instances = await db.get_outdated_workshops(interval)
+    return list(dict(r.items()) for r in outdated_instances)
+
 
 @app.get("/ready")
 async def instance_is_ready(name: str):
