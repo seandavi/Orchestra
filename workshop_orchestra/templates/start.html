@@ -13,10 +13,11 @@
       <!--  <p>Hi, {{ request.session.get('user')['given_name'] }}</p> -->
       <h2>Choose a workshop</h2>
       <div class="row">
-        <table id="mytable" class="display" style="width:100%">
+        <table id="mytable" class="display compact" style="width:100%">
           <thead>
             <tr>
               <th>Title</th>
+              <th>Created</th>
               <th>Launches</th>
               <th>Actions</th>
             </tr>
@@ -25,6 +26,7 @@
             {% for workshop in workshops %}
             <tr>
               <td><a href="{{ workshop.get('url') }}" target="_blank">{{ workshop.get('description') }}</a></td>
+              <td>{{ workshop.get('created').strftime('%Y-%m-%d') }}</td>
               <td>{{ workshop.get('launches') if workshop.get('launches') }}</td>
               <td>
                 <a
@@ -49,7 +51,10 @@
       $(document).ready(function() {
           $('#mytable').DataTable({
               "paging":   true,
-              "ordering": true
+              "ordering": true,
+              "columnDefs": [
+                  { "width": "60%", "targets": 0 }
+              ]
           });
       } );
     </script>
