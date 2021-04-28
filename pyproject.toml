@@ -41,6 +41,7 @@ pulumi-kubernetes = "^2.6.3"
 pulumi-random = "^2.4.0"
 yapf = "^0.30.0"
 ERAlchemy = "^1.2.10"
+black = "^21.4b2"
 
 [build-system]
 requires = ["poetry>=0.12"]
