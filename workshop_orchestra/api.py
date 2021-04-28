@@ -27,6 +27,7 @@ from . import kube_utils
 from .security import check_authentication_header
 from .description import api_description
 from .config import config
+from .config import logger
 import json
 
 app = FastAPI(title="Workshop Orchestration API",
@@ -51,7 +52,6 @@ app.add_middleware(
 
 app.add_route("/metrics/", metrics)
 
-logging.basicConfig(level=logging.INFO)
 
 templates = Jinja2Templates(directory="workshop_orchestra/templates")
 
@@ -179,7 +179,7 @@ async def logout(request):
 
 @app.get("/1")
 async def read_root(request: Request):
-    logging.info(request.session)
+    logger.info(request.session)
     workshops = await db.get_workshops()
     user=request.session.get('user')
     if not user:
@@ -190,8 +190,8 @@ async def read_root(request: Request):
 
 @app.get('/new_workshop')
 async def new_workshop_web(request: Request, i = Depends(lambda x: True)):
-    logging.info(request.session)
-    logging.info(i)
+    logger.info(request.session)
+    logger.info(i)
     containers = await db.get_workshops()
     return templates.TemplateResponse(
         "new.html", {
@@ -317,19 +317,3 @@ async def delete_workshop_from_collection(collection_id: int, workshop_id: int):
     res = await db.new_collection_workshop(workshop_id=workshop_id, collection_id=collection_id)
     return res
 
-# FIXME this is no longer used
-async def _new_instance(workshop_id: int, email: Optional[str] = None,
-                 stuff: bool = Depends(check_authentication_header)):
-    """Create a new instance of the container called org/repo
-    """
-    oldrepo = repo
-    # Convert everything except letters, numbers, and . - to -
-    repo = re.sub('[^a-zA-Z0-9.-]+', '-', repo)
-    d = {"container": container, "repo": repo, "email": email}
-    logging.info(d)
-    s = random_string()
-    inst_name = f"{repo}-{s}"
-    kube_utils.create_instance(inst_name, container, email)
-    d.update({"name": inst_name, "url": f"http://{inst_name}.orchestra.cancerdatasci.org/"})
-    await db.add_instance(name=inst_name, email=email, container=container)
-    return d
