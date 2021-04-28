@@ -6,32 +6,37 @@ import random
 import workshop_orchestra.db as db
 
 
-namespace = 'default'
-if os.getenv('KUBERNETES_SERVICE_HOST'):
+namespace = "default"
+if os.getenv("KUBERNETES_SERVICE_HOST"):
     config.load_incluster_config()
 else:
     config.load_kube_config()
 
+
 async def get_deployment(name):
     api_instance = client.AppsV1Api()
-    res = api_instance.read_namespaced_deployment(name,'default')
+    res = api_instance.read_namespaced_deployment(name, "default")
     return res
 
-def hash_key(key: str, k: int=8) -> str:
+
+def hash_key(key: str, k: int = 8) -> str:
     """Generate a random string
 
     Parameters:
 
     k: int length of resulting string
     """
-    if(k>32):
-        k=32
-    return ''.join(random.choices(string.ascii_lowercase, k=k))
+    if k > 32:
+        k = 32
+    return "".join(random.choices(string.ascii_lowercase, k=k))
     # return hashlib.sha1(key.encode('UTF-8')).hexdigest()[:k]
+
 
 def deployment_is_ready(name):
     api_instance = client.AppsV1Api()
-    ready_replicas = api_instance.read_namespaced_deployment(name,'default').status.ready_replicas
+    ready_replicas = api_instance.read_namespaced_deployment(
+        name, "default"
+    ).status.ready_replicas
     return ready_replicas is not None
 
 
@@ -49,25 +54,32 @@ def list_services():
     api_instance = client.CoreV1Api()
     return api_instance.list_namespaced_service(namespace, pretty=True)
 
+
 def delete_service(name):
     api_instance = client.CoreV1Api()
     return api_instance.delete_namespaced_service(name, namespace, pretty=True)
+
 
 def delete_ingress(name):
     api_instance = client.ExtensionsV1beta1Api()
     return api_instance.delete_namespaced_ingress(name, namespace, pretty=True)
 
+
 def delete_deployment(name):
     api_instance = client.AppsV1Api()
     return api_instance.delete_namespaced_deployment(name, namespace, pretty=True)
 
+
 def delete_virtual_service(name):
     api_instance = client.CustomObjectsApi()
     return api_instance.delete_namespaced_custom_object(
-        group='networking.istio.io',
-        version='v1alpha3',
-        name=name, namespace=namespace,
-        plural='virtualservices')
+        group="networking.istio.io",
+        version="v1alpha3",
+        name=name,
+        namespace=namespace,
+        plural="virtualservices",
+    )
+
 
 async def delete_workshop(name):
     # delete_ingress(name)
@@ -76,42 +88,22 @@ async def delete_workshop(name):
     delete_deployment(name)
     await db.delete_instance(name)
 
+
 def create_virtual_service(api_instance, name):
     crd_body = {
         "apiVersion": "networking.istio.io/v1alpha3",
         "kind": "VirtualService",
-        "metadata": {
-            "name": name
-        },
+        "metadata": {"name": name},
         "spec": {
-            "hosts": [
-                f"{name}.orchestra.cancerdatasci.org"
-            ],
-            "gateways": [
-                "orchestra-gateway"
-            ],
+            "hosts": [f"{name}.orchestra.cancerdatasci.org"],
+            "gateways": ["orchestra-gateway"],
             "http": [
                 {
-                    "match": [
-                        {
-                            "uri": {
-                                "prefix": "/"
-                            }
-                        }
-                    ],
-                    "route": [
-                        {
-                            "destination": {
-                                "host": name,
-                                "port": {
-                                    "number": 80
-                                }
-                            }
-                        }
-                    ]
+                    "match": [{"uri": {"prefix": "/"}}],
+                    "route": [{"destination": {"host": name, "port": {"number": 80}}}],
                 }
-            ]
-        }
+            ],
+        },
     }
 
     def get_custom_object_details(crd_body):
@@ -121,6 +113,7 @@ def create_virtual_service(api_instance, name):
         name = crd_body["metadata"]["name"]
 
         return group, version, plural, name
+
     try:
         group, version, plural, name = get_custom_object_details(crd_body)
         api_response = api_instance.create_namespaced_custom_object(
@@ -129,7 +122,8 @@ def create_virtual_service(api_instance, name):
             plural=plural,
             namespace=namespace,
             body=crd_body,
-            pretty='true')
+            pretty="true",
+        )
         print(api_response)
     except Exception as e:
         print("Exception when calling CoreV1Api->create_namespaced_endpoints: %s\n" % e)
@@ -141,12 +135,8 @@ def create_ingress(api_instance, name):
         "kind": "Ingress",
         "metadata": {
             "name": f"{name}",
-            "labels": {
-                "org": "bioc"
-            },
-            "annotations": {
-                "kubernetes.io/ingress.class": "traefik"
-            }
+            "labels": {"org": "bioc"},
+            "annotations": {"kubernetes.io/ingress.class": "traefik"},
         },
         "spec": {
             "rules": [
@@ -158,23 +148,27 @@ def create_ingress(api_instance, name):
                                 "path": "/",
                                 "backend": {
                                     "serviceName": f"{name}",
-                                    "servicePort": 80
-                                }
+                                    "servicePort": 80,
+                                },
                             }
                         ]
-                    }
+                    },
                 }
             ]
-        }
+        },
     }
     try:
-        api_response = api_instance.create_namespaced_ingress(namespace, ingress, pretty='true')
+        api_response = api_instance.create_namespaced_ingress(
+            namespace, ingress, pretty="true"
+        )
         print(api_response)
     except Exception as e:
         print("Exception when calling CoreV1Api->create_namespaced_endpoints: %s\n" % e)
 
 
-def create_deployment(api_instance, name, container, email, memory='1000M', cpu='100m', port=8787):
+def create_deployment(
+    api_instance, name, container, email, memory="1000M", cpu="100m", port=8787
+):
     deployment = {
         "apiVersion": "apps/v1",
         "kind": "Deployment",
@@ -183,59 +177,37 @@ def create_deployment(api_instance, name, container, email, memory='1000M', cpu=
             "labels": {
                 "app": f"{name}",
                 "org": "bioc",
-
-            }
+            },
         },
         "spec": {
             "replicas": 1,
-            "selector": {
-                "matchLabels": {
-                    "app": f"{name}"
-                }
-            },
+            "selector": {"matchLabels": {"app": f"{name}"}},
             "template": {
-                "metadata": {
-                    "labels": {
-                        "app": f"{name}",
-                        "base": "rstudio"
-                        }
-                },
+                "metadata": {"labels": {"app": f"{name}", "base": "rstudio"}},
                 "spec": {
                     "containers": [
                         {
                             "name": f"{name}",
                             "image": container,
                             "env": [
-                                {
-                                    "name": "PASSWORD",
-                                    "value": "rstudio"
-                                },
+                                {"name": "PASSWORD", "value": "rstudio"},
                             ],
-                            "ports": [
-                                {
-                                    "containerPort": port
-                                }
-                            ],
+                            "ports": [{"containerPort": port}],
                             "resources": {
-                                "requests": {
-                                    "memory": memory,
-                                    "cpu": cpu
-                                },
-                                "limits": {
-                                    "memory": "10000Mi",
-                                    "cpu": "1000m"
-                                }
-                            }
+                                "requests": {"memory": memory, "cpu": cpu},
+                                "limits": {"memory": "10000Mi", "cpu": "1000m"},
+                            },
                         }
                     ]
-                }
-            }
-        }
+                },
+            },
+        },
     }
 
     try:
         api_response = api_instance.create_namespaced_deployment(
-            namespace, deployment, pretty='true')
+            namespace, deployment, pretty="true"
+        )
         print(api_response)
     except Exception as e:
         print("Exception when calling CoreV1Api->create_namespaced_endpoints: %s\n" % e)
@@ -246,83 +218,86 @@ def create_service(api_instance, name, port=8787):
     service = {
         "kind": "Service",
         "apiVersion": "v1",
-        "metadata": {
-            "name": f"{name}",
-            ""
-            "labels": {
-                "org": "bioc"
-            }
-        },
+        "metadata": {"name": f"{name}", "" "labels": {"org": "bioc"}},
         "spec": {
             "type": "ClusterIP",
-            "selector": {
-                "app": f"{name}"
-            },
-            "ports": [
-                {
-                    "protocol": "TCP",
-                    "port": 80,
-                    "targetPort": port
-                }
-            ]
-        }
+            "selector": {"app": f"{name}"},
+            "ports": [{"protocol": "TCP", "port": 80, "targetPort": port}],
+        },
     }
 
     try:
-        api_response = api_instance.create_namespaced_service(namespace, service, pretty='true')
+        api_response = api_instance.create_namespaced_service(
+            namespace, service, pretty="true"
+        )
         print(api_response)
     except Exception as e:
         print("Exception when calling CoreV1Api->create_namespaced_endpoints: %s\n" % e)
 
+
 async def create_instance(workshop_id, email, name=None):
     workshop = await db.get_workshops(id=workshop_id)
     name = hash_key(str(workshop_id) + email)
-    container = workshop.get('container')
+    container = workshop.get("container")
     api_instance = client.AppsV1Api()
-    namespace = 'default'
-    create_deployment(api_instance,name,container, email,
-                      memory=workshop.get('memory'),
-                      cpu=workshop.get('cpu'),
-                      port=workshop.get('port'))
+    namespace = "default"
+    create_deployment(
+        api_instance,
+        name,
+        container,
+        email,
+        memory=workshop.get("memory"),
+        cpu=workshop.get("cpu"),
+        port=workshop.get("port"),
+    )
     api_instance = client.CoreV1Api()
-    create_service(api_instance,name, port=workshop.get('port'))
+    create_service(api_instance, name, port=workshop.get("port"))
     # lines below are for traefik
     # Not needed since switching to istio
     # api_instance = client.ExtensionsV1beta1Api()
     # create_ingress(api_instance,name)
     api_instance = client.CustomObjectsApi()
-    create_virtual_service(api_instance,name)
-    await db.add_instance(name=name,email=email,workshop_id=workshop_id)
-    return {'url': f'http://{name}.orchestra.cancerdatasci.org', 'name': name}
+    create_virtual_service(api_instance, name)
+    await db.add_instance(name=name, email=email, workshop_id=workshop_id)
+    return {"url": f"http://{name}.orchestra.cancerdatasci.org", "name": name}
+
 
 import click
+
 
 @click.group()
 def cli():
     pass
 
+
 @cli.command()
-@click.option('--name', prompt='Name of the instance',
-              help='The name of the instance')
-@click.option('--email', '-e', prompt='email')
-@click.option('--workshop_id','-i', prompt='Workshop ID',
-              help='The container to deploy', default=10)
+@click.option("--name", prompt="Name of the instance", help="The name of the instance")
+@click.option("--email", "-e", prompt="email")
+@click.option(
+    "--workshop_id",
+    "-i",
+    prompt="Workshop ID",
+    help="The container to deploy",
+    default=10,
+)
 def create_workshop(name, workshop_id, email):
     import asyncio
+
     # Configs can be set in Configuration class directly or using helper
     # utility. If no argument provided, the config will be loaded from
     # default location.
     res = asyncio.run(create_instance(name, workshop_id, email))
     return res
 
+
 @cli.command()
-@click.option('--name', prompt='Name of the instance',
-              help='The name of the instance')
+@click.option("--name", prompt="Name of the instance", help="The name of the instance")
 def delete(name):
     import asyncio
+
     res = asyncio.run(delete_workshop(name))
     return res
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()
