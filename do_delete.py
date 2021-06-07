@@ -1,6 +1,7 @@
 #/usr/bin/env python
 import workshop_orchestra.kube_utils as k
 import workshop_orchestra.db as db
+from workshop_orchestra.db import delete_instance
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -18,6 +19,8 @@ async def main():
             await k.delete_workshop(i.get('name'))
             logging.info(f"{i.get('name')} DELETED")
         except:
+            #res = await delete_instance(i.get('name'))
+            #print(res)
             logging.info(f"{i.get('name')} PROBLEMATIC")
 
 if __name__ == '__main__':
