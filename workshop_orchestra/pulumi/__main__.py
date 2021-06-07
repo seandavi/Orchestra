@@ -281,7 +281,7 @@ orchestra = Deployment(
                             {"name": "API_KEY", "value": "bioc2020"},
                             {
                                 "name": "SQLALCHEMY_URI",
-                                "value": "postgresql://postgres:***REMOVED***@omicidx.cpmth1vkdqqx.us-east-1.rds.amazonaws.com/workshop_dev",
+                                "value": "postgresql://postgres:this2222@omicidx.cpmth1vkdqqx.us-east-1.rds.amazonaws.com/workshop_dev",
                             },
                         ],
                     }
