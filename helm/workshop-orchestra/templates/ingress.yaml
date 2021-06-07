@@ -1,0 +1,76 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: orchestra-gateway
+spec:
+  selector:
+    istio: ingressgateway # use istio default controller
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "*.orchestra.cancerdatasci.org"
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: orchestra
+spec:
+  hosts:
+  - "app.orchestra.cancerdatasci.org"
+  gateways:
+  - orchestra-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /
+    route:
+    - destination:
+        host: ws-workshop-orchestra
+        port:
+          number: 80
+
+
+# {{- if .Values.ingress.enabled -}}
+# {{- $fullName := include "workshop-orchestra.fullname" . -}}
+# {{- $svcPort := .Values.service.port -}}
+# {{- if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
+# apiVersion: networking.k8s.io/v1beta1
+# {{- else -}}
+# apiVersion: extensions/v1beta1
+# {{- end }}
+# kind: Ingress
+# metadata:
+#   name: {{ $fullName }}
+#   labels:
+#     {{- include "workshop-orchestra.labels" . | nindent 4 }}
+#   {{- with .Values.ingress.annotations }}
+#   annotations:
+#     {{- toYaml . | nindent 4 }}
+#   {{- end }}
+# spec:
+#   {{- if .Values.ingress.tls }}
+#   tls:
+#     {{- range .Values.ingress.tls }}
+#     - hosts:
+#         {{- range .hosts }}
+#         - {{ . | quote }}
+#         {{- end }}
+#       secretName: {{ .secretName }}
+#     {{- end }}
+#   {{- end }}
+#   rules:
+#     {{- range .Values.ingress.hosts }}
+#     - host: {{ .host | quote }}
+#       http:
+#         paths:
+#           {{- range .paths }}
+#           - path: {{ . }}
+#             backend:
+#               serviceName: {{ $fullName }}
+#               servicePort: {{ $svcPort }}
+#           {{- end }}
+#     {{- end }}
+#   {{- end }}
