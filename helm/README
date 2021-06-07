@@ -1,0 +1,1 @@
+gcloud container clusters get-credentials autopilot-cluster-1 --region us-central1 --project isb-cgc-01-0006
